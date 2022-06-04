@@ -1,15 +1,23 @@
-.PHONY: all build
-all: import
+CART_NAME=wizards-tower
+CART_EXT=.tic
+WASM_BINARY=target/wasm32-unknown-unknown/release/cart.wasm
 
-CART_NAME = wizards-tower
-TIC_EXT = .tic
+all: $(CART_NAME)$(CART_EXT)
 
-$(CART_NAME)$(TIC_EXT):
-	tic80 --cli --cmd "new wasm & save $(CART_NAME)"
-
-build:
+$(WASM_BINARY): src/*.rs
 	cargo build --release
 
-import: target/wasm32-unknown-unknown/release/cart.wasm $(CART_NAME)$(TIC_EXT)
-	tic80 --cli \
-		--cmd "load wizards-tower/wizards-tower.tic & import binary wizards-tower/$< & save"
+# Load cart data, import WASM binary, and save cart
+$(CART_NAME)$(CART_EXT): $(WASM_BINARY)
+	rm -f $@
+	tic80 --cli --fs . \
+		--cmd 'load wasmdemo.wasmp & import binary $< & save $@'
+
+open: $(CART_NAME)$(CART_EXT)
+	tic80 --fs . --cmd 'load $<' &
+
+clean:
+	cargo clean
+	rm -f $(CART_NAME)$(CART_EXT)
+
+.PHONY: all clean open
