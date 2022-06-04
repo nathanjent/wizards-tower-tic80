@@ -3,15 +3,12 @@ target = "wasm32-unknown-unknown"
 
 [target.wasm32-unknown-unknown]
 rustflags = [
-    # Import memory from WASM-4
     "-C", "link-arg=--import-memory",
-    "-C", "link-arg=--initial-memory=65536",
-    "-C", "link-arg=--max-memory=65536",
+    "-C", "link-arg=--initial-memory=262144",
+    "-C", "link-arg=--max-memory=262144",
 
-    # Reserve a certain amount of Rust stack space, offset from 6560.
-    # Bump this value, 16-byte aligned, if the framebuffer gets corrupted.
-    "-C", "link-arg=-zstack-size=8624",
-
-    # Not working? https://github.com/rust-lang/rust/issues/46645#issuecomment-423912553
-    # "-C", "link-arg=--global-base=6560",
+    # All the memory below 96kb is reserved for TIC and memory mapped I/O
+    # so our own usage must start above the 96kb mark
+    "-C", "link-arg=--global-base=98304",
+    "-C", "link-arg=-zstack-size=8192",
 ]
