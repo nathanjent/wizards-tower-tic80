@@ -6,9 +6,10 @@ rustflags = [
     "-C", "link-arg=--import-memory",
     "-C", "link-arg=--initial-memory=262144",
     "-C", "link-arg=--max-memory=262144",
+    "-C", "link-arg=-zstack-size=106496",
 
     # All the memory below 96kb is reserved for TIC and memory mapped I/O
     # so our own usage must start above the 96kb mark
-    "-C", "link-arg=--global-base=98304",
-    "-C", "link-arg=-zstack-size=8192",
+    #"-C", "link-arg=--global-base=98304",
+    #"-C", "link-arg=-zstack-size=8192",
 ]

@@ -3,35 +3,30 @@ mod alloc;
 mod tic80;
 mod tic80_error;
 
-use std::cell::Cell;
 use std::cell::RefCell;
 
 use tic80::*;
 use tic80_error::Tic80Error;
 
-const X: Cell<i32> = Cell::new(96);
-const Y: Cell<i32> = Cell::new(24);
-const T: Cell<i32> = Cell::new(0);
-const M: &str = "HELLO WORLD FROM RUST!";
-const ENTITY_COUNT: usize = 3;
+struct Game {
+    tic: i32,
+    player: Player,
+}
 
-#[derive(Default, Clone, Copy)]
-pub struct Entity {
-    pub id: usize,
-    pub x: f32,
-    pub y: f32,
-    pub vx: f32,
-    pub vy: f32,
-    pub max_vx: f32,
-    pub max_vy: f32,
-    pub ax: f32,
-    pub ay: f32,
-    pub sprite: Option<usize>,
-    pub flip: bool,
+struct Player {
+    x: i32,
+    y: i32,
 }
 
 thread_local! {
-    static ENTITIES: RefCell<[Entity; ENTITY_COUNT]> = RefCell::new([Default::default(); ENTITY_COUNT]);
+    static GAME: RefCell<Game> = RefCell::new(
+        Game {
+            tic: 0,
+        player: Player {
+            x: 96,
+            y: 24,
+        },
+    });
 }
 
 #[no_mangle]
@@ -42,43 +37,54 @@ pub extern "C" fn BOOT() {}
 #[allow(non_snake_case)]
 pub extern "C" fn TIC() {
     // The standard demo.
-    tic().expect("Error");
+    tic().unwrap_or_else(|e| {
+        trace(format!("Error: \"{}\"\0", e), None);
+    });
 }
 
 fn tic() -> Result<(), Tic80Error> {
-    //trace("hi", None).expect("trace");
-    if btn(0) {
-    //    trace("btn 0", None).expect("trace btn");
-        Y.set(Y.get() - 1);
-    }
-    if btn(1) {
-        //    trace("btn 1", None).expect("trace btn");
-        Y.set(Y.get() + 1);
-    }
-    if btn(2) {
-    //    trace("btn 2", None).expect("trace btn");
-        X.set(X.get() - 1);
-    }
-    if btn(3) {
-    //    trace("btn 3", None).expect("trace btn");
-        X.set(X.get() + 1);
-    }
+    GAME.with(|game| {
+        let mut game = game.borrow_mut();
+        game.tic += 1;
+
+        if Btnp::default().id(0).hold(6).period(30).btnp() {
+            trace("btn 0\0", None);
+            game.player.y -= 16;
+        }
+
+        if Btnp::default().id(1).hold(6).period(30).btnp() {
+            trace("btn 1\0", None);
+            game.player.y += 16;
+        }
+
+        if Btnp::default().id(2).hold(6).period(30).btnp() {
+            trace("btn 2\0", None);
+            game.player.x -= 16;
+        }
+
+        if Btnp::default().id(3).hold(6).period(30).btnp() {
+            trace("btn 3\0", None);
+            game.player.x += 16;
+        }
+    });
 
     cls(13);
-    //map(None, None, None, None, None, None, None, None, None, None);
+    map_default();
 
-    spr(
-        1 + T.get() % 60 / 30 * 2,
-        X.get(),
-        Y.get(),
-        Some(&[14]),
-        3,
-        0,
-        0,
-        2,
-        2,
-    )?;
-    //print(M, 60, 84, 15, true, 1, false).expect("print");
-    T.set(T.get() + 1);
+    GAME.with(|game| {
+        let game = game.borrow();
+
+        Spr::default()
+            .transparent_colors(&Colors::with_color(14u8))
+            .width(2)
+            .height(2)
+            .spr(1 + game.tic % 60 / 30 * 2, game.player.x, game.player.y);
+
+        Print::default()
+            .x(84)
+            .y(84)
+            .print("HELLO WORLD FROM RUST!\0");
+    });
+
     Ok(())
 }
