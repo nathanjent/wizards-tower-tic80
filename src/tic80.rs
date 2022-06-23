@@ -215,48 +215,58 @@ extern "C" {
     fn extern_fset(id: i32, flag: i8, value: bool);
 }
 
-pub struct Colors {
-    colors: Vector<u8, 15>,
+pub struct ColorList {
+    color_list: Vector<u8, 16>,
 }
 
-impl Colors {
+impl ColorList {
     pub fn new() -> Self {
         Self {
-            colors: Vector::new(),
+            color_list: Vector::new(),
         }
     }
 
+    pub fn with_colors(color_list: Vector<u8, 16>) -> Self {
+        Self { color_list }
+    }
+
     pub fn with_color(value: u8) -> Self {
-        let mut colors = Vector::new();
-        colors.push(value);
-        Self { colors }
+        let mut color_list = Vector::new();
+        color_list.push(value);
+        Self { color_list }
     }
 
     pub fn and_color(&mut self, value: u8) -> &mut Self {
-        self.colors.push(value);
+        self.color_list.push(value);
         self
     }
 }
 
-impl<'a> Into<&'a [u8]> for &'a Colors {
-    fn into(self) -> &'a [u8] {
-        self.colors.as_ref()
+impl Into<Vector<u8, 16>> for ColorList {
+    fn into(self) -> Vector<u8, 16> {
+        self.color_list
     }
 }
 
-impl<'a> Into<Colors> for &'a [u8] {
-    fn into(self) -> Colors {
-        let mut colors = Vector::new();
-        colors.extend_from_slice(self);
-        Colors { colors }
+impl<'a> Into<&'a [u8]> for &'a ColorList {
+    fn into(self) -> &'a [u8] {
+        self.color_list.as_ref()
+    }
+}
+
+impl<'a> Into<ColorList> for &'a [u8] {
+    fn into(self) -> ColorList {
+        let mut color_list = Vector::new();
+        color_list.extend_from_slice(self);
+        ColorList { color_list }
     }
 }
 
 #[derive(Builder)]
 #[builder(name = "Font", build_fn(private))]
-struct FontArgs<'a> {
-    #[builder(setter(into), default = "&[]")]
-    transparent_colors: &'a [u8],
+struct FontArgs {
+    #[builder(setter(into), default = "Vector::new()")]
+    transparent_colors: Vector<u8, 16>,
     #[builder(setter(into), default = "-1")]
     width: i8,
     #[builder(setter(into), default = "-1")]
@@ -267,16 +277,17 @@ struct FontArgs<'a> {
     scale: i8,
 }
 
-impl<'a> Font<'a> {
-    pub fn new() -> Self {
-        Self {
-            ..Default::default()
-        }
+impl Font {
+    /// Add to the list of a transparent colors.
+    pub fn transparent_color(&mut self, value: u8) -> &mut Self {
+        let colors = self.transparent_colors.get_or_insert(Vector::new());
+        colors.push(value);
+        self
     }
 
     /// [font](https://github.com/nesbox/TIC-80/wiki/font)
     /// Draw text to the screen using the foreground spritesheet as the font.
-    pub fn font<T>(self, text: T, x: i32, y: i32) -> Result<i32, Tic80Error>
+    pub fn font<T>(&self, text: T, x: i32, y: i32) -> Result<i32, Tic80Error>
     where
         T: Into<Vec<u8>>,
     {
@@ -379,7 +390,7 @@ pub fn map_default() {
 
 #[derive(Builder)]
 #[builder(name = "Map", build_fn(private))]
-pub struct MapArgs<'a> {
+pub struct MapArgs {
     #[builder(setter(into), default = "-1")]
     x: i32,
     #[builder(setter(into), default = "-1")]
@@ -392,19 +403,26 @@ pub struct MapArgs<'a> {
     sx: i32,
     #[builder(setter(into), default = "-1")]
     sy: i32,
-    #[builder(setter(into), default = "&[]")]
-    transparent_colors: &'a [u8],
+    #[builder(setter(into), default = "Vector::new()")]
+    transparent_colors: Vector<u8, 15>,
     #[builder(setter(into), default = "-1")]
     scale: i8,
     #[builder(setter(into), default = "-1")]
     remap: i32,
 }
 
-impl<'a> Map<'a> {
+impl Map {
+    /// Add to the list of a transparent colors.
+    pub fn transparent_color(&mut self, value: u8) -> &mut Self {
+        let colors = self.transparent_colors.get_or_insert(Vector::new());
+        colors.push(value);
+        self
+    }
+
     /// [map](https://github.com/nesbox/TIC-80/wiki/map)
     /// Draw the desired area of the map to a specified screen position.
     /// TODO: `remap` may not be supported yet
-    pub fn map(self) {
+    pub fn map(&self) {
         let args = self.build().unwrap();
         let colorcount = args.transparent_colors.len().try_into().unwrap_or(-1);
         let transparent_colors = args.transparent_colors.as_ptr();
@@ -798,10 +816,10 @@ extern "C" {
 }
 
 #[derive(Builder, Clone)]
-#[builder(name = "Spr", build_fn(private), pattern = "owned")]
-pub struct SprArgs<'a> {
-    #[builder(setter(into), default = "&[]")]
-    transparent_colors: &'a [u8],
+#[builder(name = "Spr", build_fn(private))]
+pub struct SprArgs {
+    #[builder(setter(into), default = "Vector::new()")]
+    transparent_colors: Vector<u8, 16>,
     #[builder(setter(into), default = "-1")]
     scale: i32,
     #[builder(setter(into), default = "-1")]
@@ -814,10 +832,17 @@ pub struct SprArgs<'a> {
     height: i32,
 }
 
-impl<'a> Spr<'a> {
+impl Spr {
+    /// Add to the list of a transparent colors.
+    pub fn transparent_color(&mut self, value: u8) -> &mut Self {
+        let colors = self.transparent_colors.get_or_insert(Vector::new());
+        colors.push(value);
+        self
+    }
+    
     /// [spr](https://github.com/nesbox/TIC-80/wiki/spr)
     /// Draws the sprite number index at the x and y coordinate.
-    pub fn spr(self, id: i32, x: i32, y: i32) {
+    pub fn spr(&self, id: i32, x: i32, y: i32) {
         let args = self.build().unwrap();
         let colorcount = args.transparent_colors.len().try_into().unwrap_or(-1);
         let transparent_colors = args.transparent_colors.as_ptr();
@@ -875,11 +900,11 @@ pub enum TextureSource {
 /// This function draws a triangle filled with texture from either SPRITES or MAP RAM or VBANK.
 #[derive(Builder)]
 #[builder(name = "Ttri", build_fn(private))]
-pub struct TtriArgs<'a> {
+pub struct TtriArgs {
     #[builder(setter(into), default = "TextureSource::Sprites")]
     texture_src: TextureSource,
-    #[builder(setter(into), default = "&[]")]
-    transparent_colors: &'a [u8],
+    #[builder(setter(into), default = "Vector::new()")]
+    transparent_colors: Vector<u8, 16>,
     #[builder(setter(into, strip_option))]
     z1: Option<f32>,
     #[builder(setter(into, strip_option))]
@@ -888,11 +913,18 @@ pub struct TtriArgs<'a> {
     z3: Option<f32>,
 }
 
-impl<'a> Ttri<'a> {
+impl Ttri {
+    /// Add to the list of a transparent colors.
+    pub fn transparent_color(&mut self, value: u8) -> &mut Self {
+        let colors = self.transparent_colors.get_or_insert(Vector::new());
+        colors.push(value);
+        self
+    }
+
     /// [ttri](https://github.com/nesbox/TIC-80/wiki/ttri)
     /// This function draws a triangle filled with texture from either SPRITES or MAP RAM or VBANK.
     pub fn ttri(
-        self,
+        &self,
         x1: f32,
         y1: f32,
         x2: f32,

@@ -75,7 +75,7 @@ fn tic() -> Result<(), Tic80Error> {
         let game = game.borrow();
 
         Spr::default()
-            .transparent_colors(&Colors::with_color(14u8))
+            .transparent_color(14_u8)
             .width(2)
             .height(2)
             .spr(1 + game.tic % 60 / 30 * 2, game.player.x, game.player.y);
